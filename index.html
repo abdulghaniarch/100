@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NuORDER — Hybrid Rule + Browser AI Cleaning Engine</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-dim: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+      --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    /* Terminal Frame */
+    .terminal {
+      width: 100%;
+      max-width: 950px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      overflow: hidden;
+    }
+
+    .terminal-header {
+      background: #21262d;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left { display: flex; align-items: center; }
+    .window-dots { display: flex; gap: 8px; margin-right: 16px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot.red { background: var(--red); }
+    .dot.yellow { background: var(--yellow); }
+    .dot.green { background: var(--green); }
+    .title { font-size: 0.85rem; color: var(--text-dim); }
+
+    .ai-badge {
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: rgba(88, 166, 255, 0.1);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    /* Navigation Tabs */
+    .tab-bar {
+      display: flex;
+      background: #0d1117;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-btn {
+      padding: 10px 20px;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-family: inherit;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      background: var(--card-bg);
+    }
+
+    /* Content Area */
+    .terminal-body { padding: 20px; }
+    .command-line {
+      color: var(--green);
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+    }
+    .command-line span { color: var(--text-dim); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .search-box {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1rem;
+      outline: none;
+    }
+    .search-box:focus { border-color: var(--accent); }
+
+    .results-card {
+      margin-top: 15px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 15px;
+    }
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .field-label { color: var(--text-dim); }
+    .field-val { color: var(--accent); font-weight: bold; }
+
+    .actions { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+    .btn {
+      padding: 8px 14px;
+      background: #21262d;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: inherit;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn:hover { background: #30363d; }
+    .btn-primary { background: #238636; border-color: #2e9d40; }
+    .btn-primary:hover { background: #2ea043; }
+
+    textarea {
+      width: 100%;
+      height: 160px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 10px;
+      font-family: inherit;
+      resize: vertical;
+    }
+    table {
+      width: 100%;
+      margin-top: 15px;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      text-align: left;
+    }
+    th { background: #21262d; color: var(--text-dim); }
+
+    .status-bar {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      color: var(--yellow);
+    }
+
+    .key-hints {
+      margin-top: 15px;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      text-align: center;
+    }
+    kbd {
+      background: #21262d;
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+    .char-count {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      float: right;
+    }
+  </style>
+</head>
+<body>
+
+<div class="terminal">
+  <div class="terminal-header">
+    <div class="header-left">
+      <div class="window-dots">
+        <div class="dot red"></div>
+        <div class="dot yellow"></div>
+        <div class="dot green"></div>
+      </div>
+      <div class="title">nuorder — local hybrid pipeline (rules + on-device Transformers.js)</div>
+    </div>
+    <div class="ai-badge" id="aiStatus">Local Engine Ready</div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('single', event)">Single Lookup</button>
+    <button class="tab-btn" onclick="switchTab('batch', event)">Batch Process</button>
+    <button class="tab-btn" onclick="switchTab('aiModel', event)">Browser AI Settings</button>
+  </div>
+
+  <div class="terminal-body">
+    <!-- Single Lookup Tab -->
+    <div id="single" class="tab-content active">
+      <div class="command-line">$ nuorder color-lookup <span>--local-rules --transformers-js-fallback</span></div>
+      <input type="text" id="searchInput" class="search-box" placeholder="Try: 'wht', 'TESTA DI MORO / GOLD', 'RETE ROSA 018/MIGN. NAP. DUSTY'..." oninput="handleSearch()">
+      
+      <div class="results-card" id="resultCard">
+        <div class="field-row">
+          <span class="field-label">customer_facing_color</span>
+          <span class="field-val" id="resFacing">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">color_family</span>
+          <span class="field-val" id="resFamily">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">processing_engine</span>
+          <span class="field-val" id="resEngine" style="color: var(--green);">Rule Engine (0ms)</span>
+        </div>
+        <div class="char-count" id="charCount">0/30 chars</div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="copyResult('tab')">Copy Both (Tab Separated)</button>
+          <button class="btn" onclick="copyResult('facing')">Copy Name</button>
+          <button class="btn" onclick="copyResult('family')">Copy Family</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Batch Process Tab -->
+    <div id="batch" class="tab-content">
+      <div class="command-line">$ nuorder color-lookup <span>--batch &lt; colors_input.txt</span></div>
+      <textarea id="batchInput" placeholder="Paste raw supplier strings (one per line)...
+wht
+blk
+TESTA DI MORO / GOLD
+RETE ROSA 018/MIGN. NAP. DUSTY || DUSTY PINK 018
+NERO H140CM || NERO H140CM || ARGENTO FONDO BIANCO
+MAROON 393 || MAROON 393 || ARGENTO FONDO BIANCO
+CUOIO TEMP || CUOIO (TEMP)
+T.MORO || BURNT SIENNA || COLLEGE RED
+CARM 102 / M WITH LIN"></textarea>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="runBatch()">Process Batch</button>
+        <button class="btn" onclick="copyBatchTSV()">Copy All (TSV)</button>
+        <button class="btn" onclick="exportBatchCSV()">Export CSV File</button>
+      </div>
+      <table id="batchTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Raw Input</th>
+            <th>Customer Facing Color</th>
+            <th>Color Family</th>
+            <th>Engine</th>
+          </tr>
+        </thead>
+        <tbody id="batchBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Browser AI Settings Tab -->
+    <div id="aiModel" class="tab-content">
+      <div class="command-line">$ nuorder ai <span>--initialize-transformers-js</span></div>
+      <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 15px;">
+        Transformers.js runs a small text model (LaMini-Flan-T5) <b>directly inside your browser</b> using WebAssembly/WebGPU. No API key or remote server is required.
+      </p>
+      <button class="btn btn-primary" id="loadAiBtn" onclick="initTransformersAI()">Initialize On-Device AI Model</button>
+      <div class="status-bar" id="aiLoadingProgress">AI Model Status: Idle (Local Rule Engine Active)</div>
+    </div>
+  </div>
+</div>
+
+<div class="key-hints">
+  <kbd>Tab</kbd> complete · <kbd>⏎</kbd> copy output · <kbd>Esc</kbd> clear input
+</div>
+
+<!-- Load Transformers.js module directly from CDN (No NPM/Build required) -->
+<script type="module">
+  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.14.0/dist/transformers.min.js';
+
+  let localAiGenerator = null;
+
+  window.initTransformersAI = async function() {
+    const statusEl = document.getElementById('aiLoadingProgress');
+    const badgeEl = document.getElementById('aiStatus');
+    const btnEl = document.getElementById('loadAiBtn');
+
+    try {
+      statusEl.innerText = "Downloading model weights into browser cache (~75MB)...";
+      badgeEl.innerText = "Loading AI...";
+      btnEl.disabled = true;
+
+      // Initialize Xenova/LaMini-Flan-T5 model locally in browser WebAssembly
+      localAiGenerator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-77M');
+
+      statusEl.innerText = "Model loaded successfully into local browser cache!";
+      statusEl.style.color = "var(--green)";
+      badgeEl.innerText = "Browser AI Enabled";
+      btnEl.innerText = "AI Ready in Browser";
+    } catch (err) {
+      console.error("Transformers.js Error:", err);
+      statusEl.innerText = "Failed to load local AI model. Falling back to local rules engine.";
+      statusEl.style.color = "var(--red)";
+      badgeEl.innerText = "Local Rules Engine";
+      btnEl.disabled = false;
+    }
+  };
+
+  window.runAiFallback = async function(text) {
+    if (!localAiGenerator) return null;
+    try {
+      const prompt = `Convert abbreviated fashion color "${text}" to full titlecase color name:`;
+      const out = await localAiGenerator(prompt, { max_new_tokens: 15 });
+      if (out && out[0] && out[0].generated_text) {
+        return out[0].generated_text.trim();
+      }
+    } catch (e) {
+      console.warn("AI generation failed, using rules:", e);
+    }
+    return null;
+  }
+</script>
+
+<script>
+  // Construction, Material, and Factory Jargon (Strips non-color terms)
+  const NOISE_WORDS = new Set([
+    'RETE', 'MIGN', 'MIGNON', 'NAP', 'NAPPA', 'INGROP', 'TEMP', 'FONDO', 'CAMOSCIO',
+    'VRV', 'NEW', 'NW', 'LIN', 'SF', 'TI', 'DS', 'BOT', 'WITH', 'S', 'M', 'L'
+  ]);
+
+  // Extended Color Translation & Shorthand Dictionary
+  const COLOR_MAP = {
+    'WHT': 'White',
+    'BLK': 'Black',
+    'NV': 'Navy',
+    'BLU': 'Blue',
+    'GRN': 'Green',
+    'GRY': 'Grey',
+    'GRAY': 'Grey',
+    'PNK': 'Pink',
+    'ROSA': 'Pink',
+    'NERO': 'Black',
+    'ARGENTO': 'Silver',
+    'BIANCO': 'White',
+    'MAROON': 'Maroon',
+    'BRN': 'Brown',
+    'CARM': 'Carmine',
+    'BUTT': 'Butter',
+    'BUT': 'Butter',
+    'DK': 'Dark',
+    'LGT': 'Light',
+    'LT': 'Light',
+    'CAC': 'Cacao',
+    'T.MORO': 'Testa Di Moro'
+  };
+
+  const OFF_WHITE_TERMS = new Set([
+    'ivory', 'cream', 'off white', 'offwhite', 'off-white', 'bone', 'ecru', 'champagne', 'vanilla', 'mascarpone'
+  ]);
+
+  const FAMILY_RULES = [
+    { match: 'testa di moro', family: 'Brown' },
+    { match: 'dusty pink', family: 'Pink' },
+    { match: 'flame red', family: 'Red' },
+    { match: 'burnt sienna', family: 'Brown' },
+    { match: 'maroon', family: 'Red' },
+    { match: 'carmine', family: 'Red' },
+    { match: 'oxblood', family: 'Red' },
+    { match: 'red', family: 'Red' },
+    { match: 'pink', family: 'Pink' },
+    { match: 'cognac', family: 'Brown' },
+    { match: 'cuoio', family: 'Brown' },
+    { match: 'sienna', family: 'Brown' },
+    { match: 'camel', family: 'Brown' },
+    { match: 'cacao', family: 'Brown' },
+    { match: 'brown', family: 'Brown' },
+    { match: 'navy', family: 'Blue' },
+    { match: 'blue', family: 'Blue' },
+    { match: 'charcoal', family: 'Grey' },
+    { match: 'grey', family: 'Grey' },
+    { match: 'gray', family: 'Grey' },
+    { match: 'tan', family: 'Tan' },
+    { match: 'black', family: 'Black' },
+    { match: 'butter', family: 'Yellow' },
+    { match: 'yellow', family: 'Yellow' },
+    { match: 'gold', family: 'Yellow' },
+    { match: 'white', family: 'White' },
+    { match: 'silver', family: 'Silver' },
+    { match: 'green', family: 'Green' }
+  ];
+
+  function toTitleCase(str) {
+    return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function processColorRules(rawInput) {
+    if (!rawInput || !rawInput.trim()) {
+      return { facing: '—', family: '—', charLen: 0, engine: 'Rule Engine' };
+    }
+
+    let segments = rawInput.split(/\|+/).map(s => s.trim()).filter(Boolean);
+    
+    let cleanSegments = segments.map(seg => {
+      let text = seg.replace(/\bNude\b/gi, 'Tan').replace(/&/g, 'and');
+      
+      text = text.replace(/\bL\./gi, 'Light ').replace(/\bDK\./gi, 'Dark ');
+      text = text.replace(/[-/\\,.#()"'`_]/g, ' ');
+
+      let tokens = text.split(/\s+/).filter(Boolean);
+      let validTokens = [];
+
+      for (let token of tokens) {
+        let upper = token.toUpperCase();
+
+        if (/^\d+$/.test(token) || /\d/.test(token)) continue;
+        if (token.length === 1 && /[A-Za-z]/.test(token)) continue;
+        if (NOISE_WORDS.has(upper)) continue;
+
+        if (COLOR_MAP[upper]) {
+          token = COLOR_MAP[upper];
+        }
+
+        validTokens.push(token);
+      }
+      return validTokens.join(' ');
+    }).filter(Boolean);
+
+    let fullText = cleanSegments.join(' ');
+
+    // Protect recognized multi-word compound phrases
+    let recognizedPhrases = [
+      'TESTA DI MORO', 'DUSTY PINK', 'BURNT SIENNA', 'FLAME RED', 'NAVY BLUE', 'OFF WHITE'
+    ];
+
+    let extractedColors = [];
+    let upperText = fullText.toUpperCase();
+
+    recognizedPhrases.forEach(phrase => {
+      if (upperText.includes(phrase) && !extractedColors.includes(phrase)) {
+        extractedColors.push(phrase);
+        upperText = upperText.replace(new RegExp(phrase, 'g'), '');
+      }
+    });
+
+    let remainingWords = upperText.split(/\s+/).filter(Boolean);
+    remainingWords.forEach(word => {
+      if (!extractedColors.includes(word)) {
+        extractedColors.push(word);
+      }
+    });
+
+    // Enforce MAX 2 CORE COLOR UNITS
+    if (extractedColors.length > 2) {
+      extractedColors = extractedColors.slice(0, 2);
+    }
+
+    let finalFacing = toTitleCase(extractedColors.join(' '));
+
+    // Enforce 30-character hard limit safely
+    if (finalFacing.length > 30) {
+      let words = finalFacing.split(' ');
+      while (words.join(' ').length > 30 && words.length > 0) {
+        words.pop();
+      }
+      finalFacing = words.join(' ');
+    }
+
+    if (!finalFacing) finalFacing = '—';
+
+    // Map Color Family
+    let familyString = 'Other';
+    let lowerFacing = finalFacing.toLowerCase();
+
+    let isOffWhite = Array.from(OFF_WHITE_TERMS).some(term => lowerFacing.includes(term));
+    if (isOffWhite) {
+      familyString = 'Off White';
+    } else {
+      for (let rule of FAMILY_RULES) {
+        if (lowerFacing.includes(rule.match)) {
+          familyString = rule.family;
+          break;
+        }
+      }
+    }
+
+    return {
+      facing: finalFacing,
+      family: familyString,
+      charLen: finalFacing === '—' ? 0 : finalFacing.length,
+      engine: 'Rule Engine'
+    };
+  }
+
+  async function handleSearch() {
+    const val = document.getElementById('searchInput').value;
+    let res = processColorRules(val);
+
+    // If local rules yield "Other" family or unknown word, try Transformers.js in browser
+    if (res.facing !== '—' && res.family === 'Other' && window.runAiFallback) {
+      const aiResult = await window.runAiFallback(val);
+      if (aiResult) {
+        res.facing = toTitleCase(aiResult);
+        res.engine = 'Transformers.js (Browser AI)';
+      }
+    }
+
+    document.getElementById('resFacing').innerText = res.facing;
+    document.getElementById('resFamily').innerText = res.family;
+    document.getElementById('resEngine').innerText = res.engine;
+    document.getElementById('charCount').innerText = `${res.charLen}/30 chars`;
+  }
+
+  function runBatch() {
+    const rawLines = document.getElementById('batchInput').value.split('\n');
+    const tbody = document.getElementById('batchBody');
+    tbody.innerHTML = '';
+
+    let count = 1;
+    rawLines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      const res = processColorRules(trimmed);
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${count++}</td>
+        <td>${trimmed}</td>
+        <td><b>${res.facing}</b></td>
+        <td>${res.family}</td>
+        <td><span style="color: var(--green);">${res.engine}</span></td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    document.getElementById('batchTable').style.display = 'table';
+  }
+
+  function copyResult(type) {
+    const facing = document.getElementById('resFacing').innerText;
+    const family = document.getElementById('resFamily').innerText;
+
+    if (facing === '—') return;
+
+    let textToCopy = '';
+    if (type === 'tab') textToCopy = `${facing}\t${family}`;
+    else if (type === 'facing') textToCopy = facing;
+    else if (type === 'family') textToCopy = family;
+
+    navigator.clipboard.writeText(textToCopy);
+    alert('Copied to clipboard!');
+  }
+
+  function copyBatchTSV() {
+    const rows = document.querySelectorAll('#batchBody tr');
+    let tsv = 'Raw Input\tCustomer Facing Color\tColor Family\n';
+
+    rows.forEach(r => {
+      const cols = r.querySelectorAll('td');
+      if (cols.length >= 4) {
+        tsv += `${cols[1].innerText}\t${cols[2].innerText}\t${cols[3].innerText}\n`;
+      }
+    });
+
+    navigator.clipboard.writeText(tsv);
+    alert('Copied Batch TSV to clipboard!');
+  }
+
+  function exportBatchCSV() {
+    const rows = document.querySelectorAll('#batchBody tr');
+    let csv = 'Raw Input,Customer Facing Color,Color Family\n';
+
+    rows.forEach(r => {
+      const cols = r.querySelectorAll('td');
+      if (cols.length >= 4) {
+        csv += `"${cols[1].innerText}","${cols[2].innerText}","${cols[3].innerText}"\n`;
+      }
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'cleaned_colors.csv');
+    a.click();
+  }
+
+  function switchTab(tabId, evt) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    evt.target.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+  }
+</script>
+</body>
+</html>
