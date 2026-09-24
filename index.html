@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NuORDER — Hybrid Rule + Browser AI Cleaning Engine</title>
+  <title>NuORDER — Color Pipeline Dashboard</title>
   <style>
     :root {
       --bg: #0d1117;
@@ -31,7 +31,6 @@
       padding: 1.5rem;
     }
 
-    /* Terminal Frame */
     .terminal {
       width: 100%;
       max-width: 950px;
@@ -59,16 +58,6 @@
     .dot.green { background: var(--green); }
     .title { font-size: 0.85rem; color: var(--text-dim); }
 
-    .ai-badge {
-      font-size: 0.75rem;
-      padding: 3px 8px;
-      border-radius: 12px;
-      background: rgba(88, 166, 255, 0.1);
-      color: var(--accent);
-      border: 1px solid var(--accent);
-    }
-
-    /* Navigation Tabs */
     .tab-bar {
       display: flex;
       background: #0d1117;
@@ -90,7 +79,6 @@
       background: var(--card-bg);
     }
 
-    /* Content Area */
     .terminal-body { padding: 20px; }
     .command-line {
       color: var(--green);
@@ -168,12 +156,6 @@
     }
     th { background: #21262d; color: var(--text-dim); }
 
-    .status-bar {
-      margin-top: 10px;
-      font-size: 0.75rem;
-      color: var(--yellow);
-    }
-
     .key-hints {
       margin-top: 15px;
       color: var(--text-dim);
@@ -203,22 +185,20 @@
         <div class="dot yellow"></div>
         <div class="dot green"></div>
       </div>
-      <div class="title">nuorder — local hybrid pipeline (rules + on-device Transformers.js)</div>
+      <div class="title">nuorder — color data cleaning pipeline</div>
     </div>
-    <div class="ai-badge" id="aiStatus">Local Engine Ready</div>
   </div>
 
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('single', event)">Single Lookup</button>
     <button class="tab-btn" onclick="switchTab('batch', event)">Batch Process</button>
-    <button class="tab-btn" onclick="switchTab('aiModel', event)">Browser AI Settings</button>
   </div>
 
   <div class="terminal-body">
     <!-- Single Lookup Tab -->
     <div id="single" class="tab-content active">
-      <div class="command-line">$ nuorder color-lookup <span>--local-rules --transformers-js-fallback</span></div>
-      <input type="text" id="searchInput" class="search-box" placeholder="Try: 'wht', 'TESTA DI MORO / GOLD', 'RETE ROSA 018/MIGN. NAP. DUSTY'..." oninput="handleSearch()">
+      <div class="command-line">$ nuorder color-lookup <span>--strict-rules --compound-protected</span></div>
+      <input type="text" id="searchInput" class="search-box" placeholder="Try typing: 'wht', 'TESTA DI MORO / GOLD', 'RETE ROSA 018/MIGN. NAP. DUSTY'..." oninput="handleSearch()">
       
       <div class="results-card" id="resultCard">
         <div class="field-row">
@@ -228,10 +208,6 @@
         <div class="field-row">
           <span class="field-label">color_family</span>
           <span class="field-val" id="resFamily">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">processing_engine</span>
-          <span class="field-val" id="resEngine" style="color: var(--green);">Rule Engine (0ms)</span>
         </div>
         <div class="char-count" id="charCount">0/30 chars</div>
         <div class="actions">
@@ -249,7 +225,8 @@
 wht
 blk
 TESTA DI MORO / GOLD
-RETE ROSA 018/MIGN. NAP. DUSTY || DUSTY PINK 018
+RETE ROSA 018/MIGN. NAP. DUSTY || DUSTY PINK 018 || DUSTY PINK (INGROP 136)
+RETE NERO/MIGNON NAPPA NERO || DUSTY PINK 018 || NERO
 NERO H140CM || NERO H140CM || ARGENTO FONDO BIANCO
 MAROON 393 || MAROON 393 || ARGENTO FONDO BIANCO
 CUOIO TEMP || CUOIO (TEMP)
@@ -267,21 +244,10 @@ CARM 102 / M WITH LIN"></textarea>
             <th>Raw Input</th>
             <th>Customer Facing Color</th>
             <th>Color Family</th>
-            <th>Engine</th>
           </tr>
         </thead>
         <tbody id="batchBody"></tbody>
       </table>
-    </div>
-
-    <!-- Browser AI Settings Tab -->
-    <div id="aiModel" class="tab-content">
-      <div class="command-line">$ nuorder ai <span>--initialize-transformers-js</span></div>
-      <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 15px;">
-        Transformers.js runs a small text model (LaMini-Flan-T5) <b>directly inside your browser</b> using WebAssembly/WebGPU. No API key or remote server is required.
-      </p>
-      <button class="btn btn-primary" id="loadAiBtn" onclick="initTransformersAI()">Initialize On-Device AI Model</button>
-      <div class="status-bar" id="aiLoadingProgress">AI Model Status: Idle (Local Rule Engine Active)</div>
     </div>
   </div>
 </div>
@@ -289,53 +255,6 @@ CARM 102 / M WITH LIN"></textarea>
 <div class="key-hints">
   <kbd>Tab</kbd> complete · <kbd>⏎</kbd> copy output · <kbd>Esc</kbd> clear input
 </div>
-
-<!-- Load Transformers.js module directly from CDN (No NPM/Build required) -->
-<script type="module">
-  import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.14.0/dist/transformers.min.js';
-
-  let localAiGenerator = null;
-
-  window.initTransformersAI = async function() {
-    const statusEl = document.getElementById('aiLoadingProgress');
-    const badgeEl = document.getElementById('aiStatus');
-    const btnEl = document.getElementById('loadAiBtn');
-
-    try {
-      statusEl.innerText = "Downloading model weights into browser cache (~75MB)...";
-      badgeEl.innerText = "Loading AI...";
-      btnEl.disabled = true;
-
-      // Initialize Xenova/LaMini-Flan-T5 model locally in browser WebAssembly
-      localAiGenerator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-77M');
-
-      statusEl.innerText = "Model loaded successfully into local browser cache!";
-      statusEl.style.color = "var(--green)";
-      badgeEl.innerText = "Browser AI Enabled";
-      btnEl.innerText = "AI Ready in Browser";
-    } catch (err) {
-      console.error("Transformers.js Error:", err);
-      statusEl.innerText = "Failed to load local AI model. Falling back to local rules engine.";
-      statusEl.style.color = "var(--red)";
-      badgeEl.innerText = "Local Rules Engine";
-      btnEl.disabled = false;
-    }
-  };
-
-  window.runAiFallback = async function(text) {
-    if (!localAiGenerator) return null;
-    try {
-      const prompt = `Convert abbreviated fashion color "${text}" to full titlecase color name:`;
-      const out = await localAiGenerator(prompt, { max_new_tokens: 15 });
-      if (out && out[0] && out[0].generated_text) {
-        return out[0].generated_text.trim();
-      }
-    } catch (e) {
-      console.warn("AI generation failed, using rules:", e);
-    }
-    return null;
-  }
-</script>
 
 <script>
   // Construction, Material, and Factory Jargon (Strips non-color terms)
@@ -411,14 +330,14 @@ CARM 102 / M WITH LIN"></textarea>
 
   function processColorRules(rawInput) {
     if (!rawInput || !rawInput.trim()) {
-      return { facing: '—', family: '—', charLen: 0, engine: 'Rule Engine' };
+      return { facing: '—', family: '—', charLen: 0 };
     }
 
+    // 1. Break multi-segment pipe inputs and sanitize each segment
     let segments = rawInput.split(/\|+/).map(s => s.trim()).filter(Boolean);
     
     let cleanSegments = segments.map(seg => {
       let text = seg.replace(/\bNude\b/gi, 'Tan').replace(/&/g, 'and');
-      
       text = text.replace(/\bL\./gi, 'Light ').replace(/\bDK\./gi, 'Dark ');
       text = text.replace(/[-/\\,.#()"'`_]/g, ' ');
 
@@ -443,7 +362,7 @@ CARM 102 / M WITH LIN"></textarea>
 
     let fullText = cleanSegments.join(' ');
 
-    // Protect recognized multi-word compound phrases
+    // Protect multi-word compound phrases from being truncated improperly
     let recognizedPhrases = [
       'TESTA DI MORO', 'DUSTY PINK', 'BURNT SIENNA', 'FLAME RED', 'NAVY BLUE', 'OFF WHITE'
     ];
@@ -472,7 +391,7 @@ CARM 102 / M WITH LIN"></textarea>
 
     let finalFacing = toTitleCase(extractedColors.join(' '));
 
-    // Enforce 30-character hard limit safely
+    // Enforce 30-character hard limit safely by dropping trailing words
     if (finalFacing.length > 30) {
       let words = finalFacing.split(' ');
       while (words.join(' ').length > 30 && words.length > 0) {
@@ -502,27 +421,16 @@ CARM 102 / M WITH LIN"></textarea>
     return {
       facing: finalFacing,
       family: familyString,
-      charLen: finalFacing === '—' ? 0 : finalFacing.length,
-      engine: 'Rule Engine'
+      charLen: finalFacing === '—' ? 0 : finalFacing.length
     };
   }
 
-  async function handleSearch() {
+  function handleSearch() {
     const val = document.getElementById('searchInput').value;
-    let res = processColorRules(val);
-
-    // If local rules yield "Other" family or unknown word, try Transformers.js in browser
-    if (res.facing !== '—' && res.family === 'Other' && window.runAiFallback) {
-      const aiResult = await window.runAiFallback(val);
-      if (aiResult) {
-        res.facing = toTitleCase(aiResult);
-        res.engine = 'Transformers.js (Browser AI)';
-      }
-    }
+    const res = processColorRules(val);
 
     document.getElementById('resFacing').innerText = res.facing;
     document.getElementById('resFamily').innerText = res.family;
-    document.getElementById('resEngine').innerText = res.engine;
     document.getElementById('charCount').innerText = `${res.charLen}/30 chars`;
   }
 
@@ -543,7 +451,6 @@ CARM 102 / M WITH LIN"></textarea>
         <td>${trimmed}</td>
         <td><b>${res.facing}</b></td>
         <td>${res.family}</td>
-        <td><span style="color: var(--green);">${res.engine}</span></td>
       `;
       tbody.appendChild(row);
     });
