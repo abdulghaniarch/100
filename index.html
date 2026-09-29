@@ -163,8 +163,27 @@ button,input,textarea{font:inherit}
   font-size:13px;
 }
 .copy:hover{color:#cbd5e4;border-color:#46566e}
+.copy-options{
+  margin-top:16px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.copy-options-label{
+  color:#53647d;
+  font-size:14px;
+  margin-right:3px;
+}
+.copy-option{
+  font-size:13px;
+}
+.copy.is-copied{
+  color:#35f27d;
+  border-color:#286b45;
+}
 .command-copy{
-  margin-top:18px;
+  margin-top:14px;
   border:1px solid #202c3d;
   background:#0a1018;
   padding:14px;
@@ -280,13 +299,23 @@ td{color:#a9b6c9}
           <div class="result-row">
             <span class="key">customer_facing_color</span>
             <span class="value" id="facing"></span>
-            <button class="copy" data-copy="facing">copy name</button>
+            <button class="copy" data-copy="facing" data-label="customer facing color">copy customer facing color</button>
           </div>
           <div class="result-row">
             <span class="key">color_family</span>
             <span class="value" id="family"></span>
-            <button class="copy" data-copy="family">copy family</button>
+            <button class="copy" data-copy="family" data-label="color family">copy color family</button>
           </div>
+          <div class="copy-options">
+            <span class="copy-options-label">copy individually:</span>
+            <button class="copy copy-option" id="copyFacingOption" type="button">
+              customer facing color
+            </button>
+            <button class="copy copy-option" id="copyFamilyOption" type="button">
+              color family
+            </button>
+          </div>
+
           <div class="command-copy">
             <span>$ pbcopy &lt;&lt;&lt; "$facing\t$family"</span>
             <button class="copy" id="copyBoth" style="float:right">copy both</button>
@@ -415,9 +444,7 @@ query.addEventListener("keydown",e=>{
     result.classList.add("hidden");
   }
   if(e.key==="Enter" && lookup(query.value)){
-    navigator.clipboard?.writeText(
-      lookup(query.value).join("\t")
-    );
+    copyValue(lookup(query.value).join("\t"));
   }
 });
 
@@ -430,12 +457,43 @@ document.querySelectorAll(".tab").forEach(tab=>{
   });
 });
 
+async function copyValue(value, button){
+  try{
+    await navigator.clipboard.writeText(value || "");
+  }catch(e){
+    const area=document.createElement("textarea");
+    area.value=value || "";
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+  }
+
+  if(button){
+    const original=button.textContent;
+    button.textContent="copied ✓";
+    button.classList.add("is-copied");
+    setTimeout(()=>{
+      button.textContent=original;
+      button.classList.remove("is-copied");
+    },1200);
+  }
+}
+
 document.querySelectorAll("[data-copy]").forEach(btn=>{
   btn.addEventListener("click",()=>{
     const el=document.getElementById(btn.dataset.copy);
-    navigator.clipboard?.writeText(el.textContent || "");
+    copyValue(el.textContent || "", btn);
   });
 });
+
+document.getElementById("copyFacingOption").onclick=()=>{
+  copyValue(facing.textContent, document.getElementById("copyFacingOption"));
+};
+
+document.getElementById("copyFamilyOption").onclick=()=>{
+  copyValue(family.textContent, document.getElementById("copyFamilyOption"));
+};
 
 document.getElementById("copyBoth").onclick=()=>{
   navigator.clipboard?.writeText(both.textContent);
