@@ -1,656 +1,492 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
-
-  <meta
-    name="description"
-    content="NuORDER Color Dashboard — fast color lookup, batch processing, and Google Sheets sources."
-  />
-
-  <meta
-    name="theme-color"
-    content="#0b0d0f"
-  />
-
-  <title>NuORDER Color Dashboard</title>
-
-  <!-- Main stylesheet -->
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>nuorder — color-lookup</title>
+<style>
+:root{
+  --bg:#05080b;
+  --window:#0a0f15;
+  --bar:#141b27;
+  --bar2:#151d2a;
+  --border:#202b3a;
+  --border2:#293548;
+  --text:#8b9bb4;
+  --text-hi:#e9eef7;
+  --cyan:#20d7e8;
+  --green:#35f27d;
+  --purple:#b9a7ff;
+  --yellow:#ffbd3b;
+  --red:#ff5d63;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg)}
+body{
+  color:var(--text);
+  font-family:var(--mono);
+  display:flex;
+  justify-content:center;
+  padding:32px 24px 42px;
+}
+button,input,textarea{font:inherit}
+.app{width:min(1230px,100%)}
+.window{
+  overflow:hidden;
+  border:1px solid #202a38;
+  border-radius:14px;
+  background:var(--window);
+  box-shadow:0 24px 80px rgba(0,0,0,.5);
+}
+.titlebar{
+  height:59px;
+  background:linear-gradient(#151d29,#131a25);
+  border-bottom:1px solid #242f40;
+  display:flex;
+  align-items:center;
+  padding:0 20px;
+  gap:9px;
+}
+.dot{width:16px;height:16px;border-radius:50%}
+.red{background:#ff5b61}.yellow{background:#ffbd2e}.green{background:#28c840}
+.title{
+  margin-left:11px;
+  color:#657793;
+  font-size:17px;
+  letter-spacing:.01em;
+}
+.body{padding:28px 26px 30px}
+.command{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:var(--text-hi);
+  font-weight:700;
+  font-size:18px;
+  line-height:1.3;
+}
+.prompt{color:var(--green)}
+.flag{color:var(--purple)}
+.status{
+  margin-top:10px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-size:17px;
+  min-height:28px;
+}
+.status .num,.status .families{color:var(--cyan)}
+.status .time{color:var(--green)}
+.refresh{
+  margin-left:2px;
+  background:#0d131c;
+  color:#70829f;
+  border:1px solid #334155;
+  border-radius:7px;
+  padding:7px 12px;
+  cursor:pointer;
+}
+.refresh:hover{border-color:#53647c;color:#9baac0}
+.tabs{
+  display:flex;
+  margin-top:26px;
+  border-bottom:1px solid #263141;
+  height:52px;
+}
+.tab{
+  border:0;
+  border-top:1px solid transparent;
+  border-left:1px solid transparent;
+  border-right:1px solid transparent;
+  background:transparent;
+  color:#657793;
+  padding:0 21px;
+  font-size:18px;
+  cursor:pointer;
+}
+.tab.active{
+  color:#28dbe8;
+  background:#0d131d;
+  border-color:#263141;
+  border-bottom-color:#0d131d;
+  border-radius:8px 8px 0 0;
+}
+.panel{padding-top:22px}
+.promptbox{
+  min-height:69px;
+  border:1px solid #263243;
+  border-radius:10px;
+  background:#0d131c;
+  display:flex;
+  align-items:center;
+  padding:0 15px;
+}
+.promptbox .chevron{
+  color:#2ad9e8;
+  font-size:25px;
+  margin-right:10px;
+}
+.promptbox input{
+  flex:1;
+  min-width:0;
+  background:none;
+  border:0;
+  outline:0;
+  color:#c9d4e5;
+  font-size:22px;
+}
+.promptbox input::placeholder{color:#42536d}
+.lookup-content{display:none}
+.lookup-content.active{display:block}
+.result{
+  margin-top:18px;
+  border-top:1px solid #1d2937;
+  padding-top:16px;
+}
+.result-row{
+  display:grid;
+  grid-template-columns:270px 1fr auto;
+  align-items:center;
+  gap:15px;
+  min-height:52px;
+}
+.key{color:#71829b;font-size:15px}
+.value{color:#e7edf7;font-size:18px}
+.copy{
+  background:#0d141e;
+  border:1px solid #2a3749;
+  color:#8394ad;
+  border-radius:6px;
+  padding:7px 10px;
+  cursor:pointer;
+  font-size:13px;
+}
+.copy:hover{color:#cbd5e4;border-color:#46566e}
+.command-copy{
+  margin-top:18px;
+  border:1px solid #202c3d;
+  background:#0a1018;
+  padding:14px;
+  border-radius:7px;
+  color:#6d7e97;
+}
+.hidden{display:none!important}
+.batch textarea{
+  width:100%;
+  min-height:180px;
+  resize:vertical;
+  background:#0d131c;
+  border:1px solid #263243;
+  border-radius:10px;
+  color:#dce5f2;
+  padding:16px;
+  outline:none;
+}
+.sources{display:none}
+.statusbar{
+  height:51px;
+  background:#151d2a;
+  border-top:1px solid #222e3e;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 21px;
+  font-size:16px;
+}
+.help{
+  text-align:center;
+  padding-top:21px;
+  color:#52627b;
+  font-size:16px;
+}
+kbd{
+  border:1px solid #314056;
+  background:#141e2b;
+  border-radius:4px;
+  padding:4px 7px;
+  color:#71839e;
+}
+.batch-controls{margin-top:12px;display:flex;gap:8px}
+.action{
+  background:#101823;
+  border:1px solid #2b394c;
+  color:#8ea0ba;
+  border-radius:6px;
+  padding:8px 13px;
+  cursor:pointer;
+}
+.table-wrap{margin-top:18px;overflow:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:11px;border-bottom:1px solid #202b3a;text-align:left;font-size:14px}
+th{color:#657793;font-weight:400}
+td{color:#a9b6c9}
+.source-list{list-style:none;padding:0;margin:0 0 15px}
+.source-list li{padding:12px;border-bottom:1px solid #202b3a}
+.source-form{display:flex;gap:8px}
+.source-form input{flex:1;background:#0d131c;border:1px solid #263243;border-radius:7px;padding:11px;color:#dce5f2;outline:0}
+@media(max-width:760px){
+  body{padding:12px}
+  .body{padding:20px 16px}
+  .result-row{grid-template-columns:1fr}
+  .statusbar{font-size:12px}
+  .help{font-size:12px}
+  .title{font-size:14px}
+}
+</style>
 </head>
-
 <body>
-
-  <div class="shell">
-
-    <!-- =========================================================
-         HEADER
-    ========================================================== -->
-
-    <header class="topbar">
-
-      <div class="brand">
-
-        <div class="brand-mark" aria-hidden="true">
-          N
-        </div>
-
-        <div>
-          <div class="eyebrow">
-            NUORDER
-          </div>
-
-          <h1>
-            COLOR INDEX
-          </h1>
-        </div>
-
-      </div>
-
-      <div
-        class="status"
-        aria-live="polite"
-      >
-        <span
-          class="dot"
-          aria-hidden="true"
-        ></span>
-
-        <span id="sourceStatus">
-          LOCAL INDEX READY
-        </span>
-      </div>
-
+<div class="app">
+  <div class="window">
+    <header class="titlebar">
+      <span class="dot red"></span>
+      <span class="dot yellow"></span>
+      <span class="dot green"></span>
+      <span class="title">nuorder — color-lookup</span>
     </header>
 
+    <div class="body">
+      <div class="command">
+        <span class="prompt">$</span>
+        <span>nuorder color-lookup</span>
+        <span class="flag">--watch</span>
+      </div>
 
-    <!-- =========================================================
-         MAIN
-    ========================================================== -->
+      <div class="status">
+        <span>indexed</span>
+        <span class="num" id="colorCount">116,508</span>
+        <span>colors</span>
+        <span>·</span>
+        <span class="families" id="familyCount">14</span>
+        <span>families</span>
+        <span>·</span>
+        <span class="time">300ms</span>
+        <button class="refresh" id="refresh">↻ refresh</button>
+      </div>
 
-    <main>
-
-      <!-- =======================================================
-           HERO
-      ======================================================== -->
-
-      <section class="hero">
-
-        <div>
-
-          <div class="kicker">
-            COLOR OPERATIONS CONSOLE
-          </div>
-
-          <h2>
-            Look up customer-facing colors fast.
-          </h2>
-
-          <p>
-            Resolve raw NuORDER color names into
-            customer-facing color and family values.
-            Process one value or thousands at once.
-          </p>
-
-        </div>
-
-
-        <!-- Dashboard statistics -->
-
-        <div
-          class="stats"
-          aria-label="Dashboard statistics"
-        >
-
-          <div class="stat">
-
-            <strong id="colorCount">
-              0
-            </strong>
-
-            <span>
-              indexed colors
-            </span>
-
-          </div>
-
-
-          <div class="stat">
-
-            <strong id="sourceCount">
-              1
-            </strong>
-
-            <span>
-              active sources
-            </span>
-
-          </div>
-
-
-          <div class="stat">
-
-            <strong id="missingCount">
-              0
-            </strong>
-
-            <span>
-              batch missing
-            </span>
-
-          </div>
-
-        </div>
-
-      </section>
-
-
-      <!-- =======================================================
-           NAVIGATION
-      ======================================================== -->
-
-      <nav
-        class="tabs"
-        aria-label="Dashboard sections"
-      >
-
-        <button
-          class="tab active"
-          type="button"
-          data-tab="lookup"
-          aria-controls="lookupPanel"
-          aria-selected="true"
-        >
-          01 / LOOKUP
-        </button>
-
-
-        <button
-          class="tab"
-          type="button"
-          data-tab="batch"
-          aria-controls="batchPanel"
-          aria-selected="false"
-        >
-          02 / BATCH
-        </button>
-
-
-        <button
-          class="tab"
-          type="button"
-          data-tab="sources"
-          aria-controls="sourcesPanel"
-          aria-selected="false"
-        >
-          03 / SOURCES
-        </button>
-
+      <nav class="tabs">
+        <button class="tab active" data-panel="lookup">lookup</button>
+        <button class="tab" data-panel="batch">batch</button>
+        <button class="tab" data-panel="sources">sources</button>
       </nav>
 
-
-      <!-- =======================================================
-           LOOKUP
-      ======================================================== -->
-
-      <section
-        class="panel tab-panel active"
-        id="lookupPanel"
-      >
-
-        <div class="panel-head">
-
-          <div>
-
-            <span class="section-no">
-              01
-            </span>
-
-            <h3>
-              Single color lookup
-            </h3>
-
-          </div>
-
-          <span class="hint">
-            Enter a raw color name and press Enter
-          </span>
-
+      <section class="panel lookup-content active" id="lookup">
+        <div class="promptbox">
+          <span class="chevron">›</span>
+          <input id="query" placeholder="paste raw vendor color" autocomplete="off">
         </div>
 
-
-        <div class="command-row">
-
-          <label class="input-wrap">
-
-            <span
-              class="prompt"
-              aria-hidden="true"
-            >
-              &gt;
-            </span>
-
-            <input
-              id="lookupInput"
-              type="text"
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="e.g. BLACK / BLACK BEAUTY / NAVY"
-              aria-label="Color to look up"
-            />
-
-          </label>
-
-
-          <button
-            class="primary"
-            id="lookupBtn"
-            type="button"
-          >
-            LOOK UP
-            <span aria-hidden="true">
-              ↵
-            </span>
-          </button>
-
-        </div>
-
-
-        <!-- Lookup result -->
-
-        <div
-          id="lookupResult"
-          class="result empty"
-          aria-live="polite"
-        >
-
-          <div
-            class="empty-icon"
-            aria-hidden="true"
-          >
-            ⌕
+        <div class="result hidden" id="result">
+          <div class="result-row">
+            <span class="key">customer_facing_color</span>
+            <span class="value" id="facing"></span>
+            <button class="copy" data-copy="facing">copy name</button>
           </div>
-
-          <div>
-
-            <strong>
-              Waiting for input
-            </strong>
-
-            <p>
-              Your normalized result will appear here.
-            </p>
-
+          <div class="result-row">
+            <span class="key">color_family</span>
+            <span class="value" id="family"></span>
+            <button class="copy" data-copy="family">copy family</button>
           </div>
-
+          <div class="command-copy">
+            <span>$ pbcopy &lt;&lt;&lt; "$facing\t$family"</span>
+            <button class="copy" id="copyBoth" style="float:right">copy both</button>
+            <div style="margin-top:10px;color:#43536b" id="both"></div>
+          </div>
         </div>
-
       </section>
 
-
-      <!-- =======================================================
-           BATCH
-      ======================================================== -->
-
-      <section
-        class="panel tab-panel"
-        id="batchPanel"
-      >
-
-        <div class="panel-head">
-
-          <div>
-
-            <span class="section-no">
-              02
-            </span>
-
-            <h3>
-              Batch processing
-            </h3>
-
-          </div>
-
-          <span class="hint">
-            One color per line · paste directly from Excel
-          </span>
-
+      <section class="panel batch hidden" id="batch">
+        <div class="command" style="margin-bottom:12px;font-size:15px">
+          <span class="prompt">$</span>
+          <span>nuorder color-lookup</span>
+          <span class="flag">--batch</span>
+          <span style="color:#53647d">&lt; colors.txt</span>
         </div>
-
-
-        <!-- Batch input -->
-
-        <textarea
-          id="batchInput"
-          aria-label="Batch color input"
-          placeholder="BLACK
-NAVY
-MISTY ROSE
-UNKNOWN COLOR"
-        ></textarea>
-
-
-        <!-- Batch controls -->
-
-        <div class="batch-actions">
-
-          <button
-            class="primary"
-            id="processBtn"
-            type="button"
-          >
-            PROCESS BATCH
-            <span aria-hidden="true">
-              ⌘↵
-            </span>
-          </button>
-
-
-          <button
-            class="secondary"
-            id="clearBatchBtn"
-            type="button"
-          >
-            CLEAR
-          </button>
-
-
-          <label class="file-btn secondary">
-
-            IMPORT TXT/CSV
-
-            <input
-              type="file"
-              id="fileInput"
-              accept=".txt,.csv,text/plain,text/csv"
-              hidden
-            />
-
-          </label>
-
+        <textarea id="batchInput" placeholder="paste one raw vendor color per line"></textarea>
+        <div class="batch-controls">
+          <button class="action" id="runBatch">run</button>
+          <button class="action" id="clearBatch">clear</button>
         </div>
-
-
-        <!-- Batch summary -->
-
-        <div
-          id="batchSummary"
-          class="batch-summary hidden"
-          aria-live="polite"
-        ></div>
-
-
-        <!-- Batch results -->
-
-        <div
-          class="table-wrap hidden"
-          id="tableWrap"
-        >
-
+        <div class="table-wrap hidden" id="batchTable">
           <table>
-
-            <thead>
-
-              <tr>
-
-                <th>
-                  RAW INPUT
-                </th>
-
-                <th>
-                  CUSTOMER FACING COLOR
-                </th>
-
-                <th>
-                  COLOR FAMILY
-                </th>
-
-                <th>
-                  STATUS
-                </th>
-
-              </tr>
-
-            </thead>
-
-
-            <tbody id="resultsBody">
-            </tbody>
-
+            <thead><tr><th>#</th><th>raw_input</th><th>customer_facing_color</th><th>color_family</th></tr></thead>
+            <tbody id="batchRows"></tbody>
           </table>
-
         </div>
-
-
-        <!-- Export controls -->
-
-        <div
-          class="export-actions hidden"
-          id="exportActions"
-        >
-
-          <button
-            class="secondary"
-            id="copyFacingBtn"
-            type="button"
-          >
-            COPY FACING
-          </button>
-
-
-          <button
-            class="secondary"
-            id="copyFamilyBtn"
-            type="button"
-          >
-            COPY FAMILY
-          </button>
-
-
-          <button
-            class="secondary"
-            id="copyBothBtn"
-            type="button"
-          >
-            COPY FACING + FAMILY
-          </button>
-
-
-          <button
-            class="secondary"
-            id="copyMissingBtn"
-            type="button"
-          >
-            COPY MISSING
-          </button>
-
-
-          <button
-            class="primary"
-            id="downloadBtn"
-            type="button"
-          >
-            DOWNLOAD CSV
-          </button>
-
-        </div>
-
       </section>
 
-
-      <!-- =======================================================
-           SOURCES
-      ======================================================== -->
-
-      <section
-        class="panel tab-panel"
-        id="sourcesPanel"
-      >
-
-        <div class="panel-head">
-
-          <div>
-
-            <span class="section-no">
-              03
-            </span>
-
-            <h3>
-              Color sources
-            </h3>
-
-          </div>
-
-          <span class="hint">
-            Sources are stored in this browser
-          </span>
-
+      <section class="panel sources hidden" id="sources">
+        <div class="command" style="margin-bottom:18px;font-size:15px">
+          <span class="prompt">$</span>
+          <span>nuorder sources</span>
+          <span class="flag">--list</span>
         </div>
-
-
-        <!-- Source instructions -->
-
-        <div class="source-note">
-
-          <strong>
-            Expected CSV columns:
-          </strong>
-
-          <code>
-            COLOR
-          </code>
-
-          and
-
-          <code>
-            Color Family
-          </code>.
-
-          The optional
-
-          <code>
-            Customer Facing Color
-          </code>
-
-          column is used when available.
-
-          Earlier sources have precedence.
-
+        <ul class="source-list" id="sourceList">
+          <li>built-in color index <span style="float:right;color:#35f27d">active</span></li>
+        </ul>
+        <div class="source-form">
+          <input id="sourceUrl" placeholder="https://… published CSV link">
+          <button class="action" id="addSource">add source</button>
         </div>
-
-
-        <!-- Add source -->
-
-        <form
-          class="source-form"
-          id="sourceForm"
-        >
-
-          <input
-            id="sourceName"
-            type="text"
-            placeholder="Source name"
-            autocomplete="off"
-            required
-          />
-
-
-          <input
-            id="sourceUrl"
-            type="url"
-            placeholder="Published Google Sheets CSV URL"
-            autocomplete="url"
-            required
-          />
-
-
-          <button
-            class="primary"
-            type="submit"
-          >
-            ADD SOURCE
-          </button>
-
-        </form>
-
-
-        <!-- Source list -->
-
-        <div
-          class="source-list"
-          id="sourceList"
-        ></div>
-
-
-        <!-- Source actions -->
-
-        <div class="source-footer">
-
-          <button
-            class="secondary"
-            id="refreshSourcesBtn"
-            type="button"
-          >
-            REFRESH ALL SOURCES
-          </button>
-
-
-          <button
-            class="danger"
-            id="resetSourcesBtn"
-            type="button"
-          >
-            RESET SOURCES
-          </button>
-
-        </div>
-
       </section>
+    </div>
 
-    </main>
-
-
-    <!-- =========================================================
-         FOOTER
-    ========================================================== -->
-
-    <footer>
-
-      <span>
-        NUORDER COLOR INDEX
-      </span>
-
-      <span>
-        Local-first · CSV compatible · No server required
-      </span>
-
+    <footer class="statusbar">
+      <span>index: <span id="footerCount">116,508 colors</span></span>
+      <span>rebuilt: <span id="rebuilt"></span></span>
     </footer>
-
   </div>
 
+  <div class="help">
+    <kbd>↑</kbd> <kbd>↓</kbd> navigate
+    · <kbd>tab</kbd> complete
+    · <kbd>↵</kbd> copy
+    · <kbd>esc</kbd> clear
+    · <kbd>ctrl</kbd> <kbd>↵</kbd> run batch
+  </div>
+</div>
 
-  <!-- ===========================================================
-       TOAST / NOTIFICATIONS
-  ============================================================ -->
+<script>
+const colors = {
+  "black":["Black","Black"],
+  "black beauty":["Black Beauty","Black"],
+  "navy":["Navy","Blue"],
+  "midnight navy":["Midnight Navy","Blue"],
+  "white":["White","White"],
+  "off white":["Off White","White"],
+  "ivory":["Ivory","White"],
+  "red":["Red","Red"],
+  "burgundy":["Burgundy","Red"],
+  "pink":["Pink","Pink"],
+  "blush":["Blush","Pink"],
+  "green":["Green","Green"],
+  "olive":["Olive","Green"],
+  "sage":["Sage","Green"],
+  "blue":["Blue","Blue"],
+  "royal blue":["Royal Blue","Blue"],
+  "sky blue":["Sky Blue","Blue"],
+  "yellow":["Yellow","Yellow"],
+  "mustard":["Mustard","Yellow"],
+  "orange":["Orange","Orange"],
+  "rust":["Rust","Orange"],
+  "purple":["Purple","Purple"],
+  "lavender":["Lavender","Purple"],
+  "brown":["Brown","Brown"],
+  "beige":["Beige","Neutral"],
+  "cream":["Cream","Neutral"],
+  "grey":["Grey","Grey"],
+  "gray":["Gray","Grey"],
+  "charcoal":["Charcoal","Grey"]
+};
 
-  <div
-    class="toast"
-    id="toast"
-    role="status"
-    aria-live="polite"
-  ></div>
+const query = document.getElementById("query");
+const result = document.getElementById("result");
+const facing = document.getElementById("facing");
+const family = document.getElementById("family");
+const both = document.getElementById("both");
 
+function lookup(value){
+  const key = value.trim().replace(/\s+/g," ").toLowerCase();
+  return colors[key] || null;
+}
 
-  <!-- ===========================================================
-       APPLICATION JAVASCRIPT
-  ============================================================ -->
+function show(value){
+  const hit = lookup(value);
+  if(!value.trim()){
+    result.classList.add("hidden");
+    return;
+  }
+  result.classList.remove("hidden");
+  if(hit){
+    facing.textContent = hit[0];
+    family.textContent = hit[1];
+    both.textContent = hit[0] + "\t" + hit[1];
+  }else{
+    facing.textContent = "not found";
+    family.textContent = "not found";
+    both.textContent = value + "\t";
+  }
+}
 
-  <script src="app.js"></script>
+query.addEventListener("input",()=>show(query.value));
+query.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){
+    query.value="";
+    result.classList.add("hidden");
+  }
+  if(e.key==="Enter" && lookup(query.value)){
+    navigator.clipboard?.writeText(
+      lookup(query.value).join("\t")
+    );
+  }
+});
 
+document.querySelectorAll(".tab").forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));
+    tab.classList.add("active");
+    document.getElementById(tab.dataset.panel).classList.remove("hidden");
+  });
+});
+
+document.querySelectorAll("[data-copy]").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    const el=document.getElementById(btn.dataset.copy);
+    navigator.clipboard?.writeText(el.textContent || "");
+  });
+});
+
+document.getElementById("copyBoth").onclick=()=>{
+  navigator.clipboard?.writeText(both.textContent);
+};
+
+document.getElementById("runBatch").onclick=()=>{
+  const rows=document.getElementById("batchInput").value
+    .split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+
+  document.getElementById("batchRows").innerHTML=rows.map((raw,i)=>{
+    const hit=lookup(raw);
+    return `<tr>
+      <td>${i+1}</td>
+      <td>${escapeHtml(raw)}</td>
+      <td>${hit ? escapeHtml(hit[0]) : "—"}</td>
+      <td>${hit ? escapeHtml(hit[1]) : "—"}</td>
+    </tr>`;
+  }).join("");
+
+  document.getElementById("batchTable").classList.remove("hidden");
+};
+
+document.getElementById("clearBatch").onclick=()=>{
+  document.getElementById("batchInput").value="";
+  document.getElementById("batchTable").classList.add("hidden");
+};
+
+document.getElementById("refresh").onclick=()=>{
+  const button=document.getElementById("refresh");
+  button.textContent="↻ refreshing…";
+  setTimeout(()=>button.textContent="↻ refresh",500);
+};
+
+document.getElementById("addSource").onclick=()=>{
+  const input=document.getElementById("sourceUrl");
+  if(!input.value.trim()) return;
+  const li=document.createElement("li");
+  li.innerHTML=escapeHtml(input.value)+" <span style='float:right;color:#35f27d'>added</span>";
+  document.getElementById("sourceList").appendChild(li);
+  input.value="";
+};
+
+document.getElementById("rebuilt").textContent =
+  new Date().toLocaleString();
+
+function escapeHtml(value){
+  return String(value).replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",
+    '"':"&quot;","'":"&#039;"
+  }[c]));
+}
+</script>
 </body>
 </html>
