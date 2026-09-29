@@ -163,24 +163,32 @@ button,input,textarea{font:inherit}
   font-size:13px;
 }
 .copy:hover{color:#cbd5e4;border-color:#46566e}
-.copy-options{
+.copy-actions{
   margin-top:16px;
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:9px;
   flex-wrap:wrap;
 }
-.copy-options-label{
-  color:#53647d;
-  font-size:14px;
-  margin-right:3px;
+.copy-main{
+  min-height:37px;
+  padding:7px 12px;
+  border-radius:6px;
+  font-size:15px;
+  color:#7f91ad;
+  background:#101822;
+  border:1px solid #2d3b4f;
+  white-space:nowrap;
 }
-.copy-option{
-  font-size:13px;
+.copy-main:hover{
+  color:#22d9e8;
+  border-color:#3b506a;
+  background:#111c28;
 }
 .copy.is-copied{
   color:#35f27d;
   border-color:#286b45;
+  background:#0e1b16;
 }
 .command-copy{
   margin-top:14px;
@@ -299,15 +307,15 @@ td{color:#a9b6c9}
           <div class="result-row">
             <span class="key">customer_facing_color</span>
             <span class="value" id="facing"></span>
-            <button class="copy" data-copy="facing" data-label="customer facing color">copy customer facing color</button>
+            <button class="copy" data-copy="facing" data-label="customer facing color">copy customer facing</button>
           </div>
           <div class="result-row">
             <span class="key">color_family</span>
             <span class="value" id="family"></span>
-            <button class="copy" data-copy="family" data-label="color family">copy color family</button>
+            <button class="copy" data-copy="family" data-label="color family">copy family</button>
           </div>
           <div class="copy-options">
-            <span class="copy-options-label">copy individually:</span>
+            <span class="copy-options-label">COPY INDIVIDUALLY:</span>
             <button class="copy copy-option" id="copyFacingOption" type="button">
               customer facing color
             </button>
@@ -480,13 +488,6 @@ async function copyValue(value, button){
   }
 }
 
-document.querySelectorAll("[data-copy]").forEach(btn=>{
-  btn.addEventListener("click",()=>{
-    const el=document.getElementById(btn.dataset.copy);
-    copyValue(el.textContent || "", btn);
-  });
-});
-
 document.getElementById("copyFacingOption").onclick=()=>{
   copyValue(facing.textContent, document.getElementById("copyFacingOption"));
 };
@@ -496,7 +497,7 @@ document.getElementById("copyFamilyOption").onclick=()=>{
 };
 
 document.getElementById("copyBoth").onclick=()=>{
-  navigator.clipboard?.writeText(both.textContent);
+  copyValue(both.textContent, document.getElementById("copyBoth"));
 };
 
 document.getElementById("runBatch").onclick=()=>{
@@ -538,6 +539,13 @@ document.getElementById("addSource").onclick=()=>{
 
 document.getElementById("rebuilt").textContent =
   new Date().toLocaleString();
+
+// Optional preview mode: open index.html?preview=1 to show the
+// lookup result and copy controls immediately.
+if(new URLSearchParams(location.search).get("preview")==="1"){
+  query.value="BLACK BEAUTY";
+  show("BLACK BEAUTY");
+}
 
 function escapeHtml(value){
   return String(value).replace(/[&<>"']/g,c=>({
