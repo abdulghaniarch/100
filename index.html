@@ -163,6 +163,19 @@ button,input,textarea{font:inherit}
   font-size:13px;
 }
 .copy:hover{color:#cbd5e4;border-color:#46566e}
+.lookup-copy-options{
+  margin-top:14px;
+  display:flex;
+  gap:9px;
+  flex-wrap:wrap;
+}
+.lookup-copy-options .copy-main:disabled{
+  opacity:.48;
+  cursor:not-allowed;
+}
+.lookup-copy-options .copy-main:not(:disabled){
+  opacity:1;
+}
 .copy-actions{
   margin-top:16px;
   display:flex;
@@ -235,6 +248,17 @@ kbd{
   color:#71839e;
 }
 .batch-controls{margin-top:12px;display:flex;gap:8px}
+.batch-copy-options{
+  margin-top:16px;
+  display:flex;
+  gap:9px;
+  flex-wrap:wrap;
+}
+.batch-copy-options .copy-main:disabled{
+  opacity:.48;
+  cursor:not-allowed;
+}
+
 .action{
   background:#101823;
   border:1px solid #2b394c;
@@ -303,32 +327,27 @@ td{color:#a9b6c9}
           <input id="query" placeholder="paste raw vendor color" autocomplete="off">
         </div>
 
+        <div class="lookup-copy-options" aria-label="Copy options">
+          <button class="copy copy-main" id="copyFacingOption" type="button" disabled>
+            copy facing
+          </button>
+          <button class="copy copy-main" id="copyFamilyOption" type="button" disabled>
+            copy family
+          </button>
+        </div>
+
         <div class="result hidden" id="result">
           <div class="result-row">
             <span class="key">customer_facing_color</span>
             <span class="value" id="facing"></span>
-            <button class="copy" data-copy="facing" data-label="customer facing color">copy customer facing</button>
           </div>
+
           <div class="result-row">
             <span class="key">color_family</span>
             <span class="value" id="family"></span>
-            <button class="copy" data-copy="family" data-label="color family">copy family</button>
-          </div>
-          <div class="copy-options">
-            <span class="copy-options-label">COPY INDIVIDUALLY:</span>
-            <button class="copy copy-option" id="copyFacingOption" type="button">
-              customer facing color
-            </button>
-            <button class="copy copy-option" id="copyFamilyOption" type="button">
-              color family
-            </button>
           </div>
 
-          <div class="command-copy">
-            <span>$ pbcopy &lt;&lt;&lt; "$facing\t$family"</span>
-            <button class="copy" id="copyBoth" style="float:right">copy both</button>
-            <div style="margin-top:10px;color:#43536b" id="both"></div>
-          </div>
+
         </div>
       </section>
 
@@ -344,6 +363,12 @@ td{color:#a9b6c9}
           <button class="action" id="runBatch">run</button>
           <button class="action" id="clearBatch">clear</button>
         </div>
+
+        <div class="batch-copy-options" id="batchCopyOptions">
+          <button class="copy copy-main" id="batchCopyFacing" type="button" disabled>copy facing</button>
+          <button class="copy copy-main" id="batchCopyFamily" type="button" disabled>copy family</button>
+        </div>
+
         <div class="table-wrap hidden" id="batchTable">
           <table>
             <thead><tr><th>#</th><th>raw_input</th><th>customer_facing_color</th><th>color_family</th></tr></thead>
@@ -429,19 +454,28 @@ function lookup(value){
 
 function show(value){
   const hit = lookup(value);
+  const copyFacingButton = document.getElementById("copyFacingOption");
+  const copyFamilyButton = document.getElementById("copyFamilyOption");
+
   if(!value.trim()){
     result.classList.add("hidden");
+    copyFacingButton.disabled = true;
+    copyFamilyButton.disabled = true;
     return;
   }
+
   result.classList.remove("hidden");
+
   if(hit){
     facing.textContent = hit[0];
     family.textContent = hit[1];
-    both.textContent = hit[0] + "\t" + hit[1];
+    copyFacingButton.disabled = false;
+    copyFamilyButton.disabled = false;
   }else{
     facing.textContent = "not found";
     family.textContent = "not found";
-    both.textContent = value + "\t";
+    copyFacingButton.disabled = true;
+    copyFamilyButton.disabled = true;
   }
 }
 
@@ -450,11 +484,7 @@ query.addEventListener("keydown",e=>{
   if(e.key==="Escape"){
     query.value="";
     result.classList.add("hidden");
-  }
-  if(e.key==="Enter" && lookup(query.value)){
-    copyValue(lookup(query.value).join("\t"));
-  }
-});
+  }});
 
 document.querySelectorAll(".tab").forEach(tab=>{
   tab.addEventListener("click",()=>{
@@ -496,9 +526,20 @@ document.getElementById("copyFamilyOption").onclick=()=>{
   copyValue(family.textContent, document.getElementById("copyFamilyOption"));
 };
 
-document.getElementById("copyBoth").onclick=()=>{
-  copyValue(both.textContent, document.getElementById("copyBoth"));
-};
+
+
+
+function getBatchMatches(){
+  const rows=[...document.querySelectorAll("#batchRows tr")];
+  return rows.map(row=>{
+    const cells=row.querySelectorAll("td");
+    return {
+      raw: cells[1]?.textContent.trim() || "",
+      facing: cells[2]?.textContent.trim() || "",
+      family: cells[3]?.textContent.trim() || ""
+    };
+  }).filter(x=>x.facing !== "—" && x.family !== "—");
+}
 
 document.getElementById("runBatch").onclick=()=>{
   const rows=document.getElementById("batchInput").value
@@ -515,12 +556,36 @@ document.getElementById("runBatch").onclick=()=>{
   }).join("");
 
   document.getElementById("batchTable").classList.remove("hidden");
+
+  const matches=getBatchMatches();
+  document.getElementById("batchCopyFacing").disabled = matches.length === 0;
+  document.getElementById("batchCopyFamily").disabled = matches.length === 0;
 };
 
 document.getElementById("clearBatch").onclick=()=>{
   document.getElementById("batchInput").value="";
   document.getElementById("batchTable").classList.add("hidden");
+  document.getElementById("batchRows").innerHTML="";
+  document.getElementById("batchCopyFacing").disabled=true;
+  document.getElementById("batchCopyFamily").disabled=true;
 };
+
+document.getElementById("batchCopyFacing").onclick=()=>{
+  const matches=getBatchMatches();
+  copyValue(matches.map(x=>x.facing).join("\n"), document.getElementById("batchCopyFacing"));
+};
+
+document.getElementById("batchCopyFamily").onclick=()=>{
+  const matches=getBatchMatches();
+  copyValue(matches.map(x=>x.family).join("\n"), document.getElementById("batchCopyFamily"));
+};
+
+document.getElementById("batchInput").addEventListener("keydown",e=>{
+  if(e.ctrlKey && e.key==="Enter"){
+    e.preventDefault();
+    document.getElementById("runBatch").click();
+  }
+});
 
 document.getElementById("refresh").onclick=()=>{
   const button=document.getElementById("refresh");
